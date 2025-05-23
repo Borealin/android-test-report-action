@@ -1,0 +1,160 @@
+name: Test Android Test Report Action Cross-platform
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-cross-platform:
+    name: Test on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create sample test reports (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p test-results
+          
+          # Create a passing test report
+          cat > test-results/TEST-passing.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.PassingTest" tests="3" failures="0" errors="0" time="0.123">
+            <testcase name="testMethod1" classname="com.example.PassingTest" time="0.041"/>
+            <testcase name="testMethod2" classname="com.example.PassingTest" time="0.042"/>
+            <testcase name="testMethod3" classname="com.example.PassingTest" time="0.040"/>
+          </testsuite>
+          EOF
+          
+          # Create a failing test report
+          cat > test-results/TEST-failing.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.FailingTest" tests="2" failures="1" errors="0" time="0.456">
+            <testcase name="testMethodPass" classname="com.example.FailingTest" time="0.200"/>
+            <testcase name="testMethodFail" classname="com.example.FailingTest" time="0.256">
+              <failure message="Expected 'true' but was 'false'">
+                AssertionError: Expected 'true' but was 'false'
+                at com.example.FailingTest.testMethodFail(FailingTest.java:25)
+              </failure>
+            </testcase>
+          </testsuite>
+          EOF
+
+      - name: Create sample test reports (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "test-results" -Force | Out-Null
+          
+          # Create a passing test report
+          @'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.PassingTest" tests="3" failures="0" errors="0" time="0.123">
+            <testcase name="testMethod1" classname="com.example.PassingTest" time="0.041"/>
+            <testcase name="testMethod2" classname="com.example.PassingTest" time="0.042"/>
+            <testcase name="testMethod3" classname="com.example.PassingTest" time="0.040"/>
+          </testsuite>
+          '@ | Out-File -FilePath "test-results/TEST-passing.xml" -Encoding UTF8
+          
+          # Create a failing test report
+          @'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.FailingTest" tests="2" failures="1" errors="0" time="0.456">
+            <testcase name="testMethodPass" classname="com.example.FailingTest" time="0.200"/>
+            <testcase name="testMethodFail" classname="com.example.FailingTest" time="0.256">
+              <failure message="Expected 'true' but was 'false'">
+                AssertionError: Expected 'true' but was 'false'
+                at com.example.FailingTest.testMethodFail(FailingTest.java:25)
+              </failure>
+            </testcase>
+          </testsuite>
+          '@ | Out-File -FilePath "test-results/TEST-failing.xml" -Encoding UTF8
+
+      - name: Test Android Test Report Action
+        uses: ./
+        if: ${{ always() }}
+
+  test-scenarios:
+    name: Test Different Scenarios
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - name: "passing-tests"
+            description: "Only passing tests"
+            expected_exit: 0
+          - name: "failing-tests"
+            description: "Tests with failures"
+            expected_exit: 1
+          - name: "no-tests"
+            description: "No test files found"
+            expected_exit: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test reports for ${{ matrix.scenario.name }}
+        run: |
+          mkdir -p test-results
+          
+          if [ "${{ matrix.scenario.name }}" = "passing-tests" ]; then
+            # Create only passing tests
+            cat > test-results/TEST-passing1.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.PassingTest1" tests="2" failures="0" errors="0" time="0.100">
+            <testcase name="testMethod1" classname="com.example.PassingTest1" time="0.050"/>
+            <testcase name="testMethod2" classname="com.example.PassingTest1" time="0.050"/>
+          </testsuite>
+          EOF
+            
+            cat > test-results/TEST-passing2.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.PassingTest2" tests="1" failures="0" errors="0" time="0.030">
+            <testcase name="testMethod1" classname="com.example.PassingTest2" time="0.030"/>
+          </testsuite>
+          EOF
+          
+          elif [ "${{ matrix.scenario.name }}" = "failing-tests" ]; then
+            # Create tests with failures
+            cat > test-results/TEST-mixed.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuite name="com.example.MixedTest" tests="3" failures="1" errors="1" time="0.300">
+            <testcase name="testMethodPass" classname="com.example.MixedTest" time="0.100"/>
+            <testcase name="testMethodFail" classname="com.example.MixedTest" time="0.100">
+              <failure message="Test failed">Test failed message</failure>
+            </testcase>
+            <testcase name="testMethodError" classname="com.example.MixedTest" time="0.100">
+              <error message="Test error">Test error message</error>
+            </testcase>
+          </testsuite>
+          EOF
+          
+          elif [ "${{ matrix.scenario.name }}" = "no-tests" ]; then
+            # Don't create any TEST-*.xml files
+            echo "No test files will be created"
+          fi
+
+      - name: Test Android Test Report Action (${{ matrix.scenario.description }})
+        uses: ./
+        continue-on-error: true
+        id: test-action
+
+      - name: Verify expected result for ${{ matrix.scenario.name }}
+        run: |
+          if [ "${{ matrix.scenario.expected_exit }}" = "0" ] && [ "${{ steps.test-action.outcome }}" != "success" ]; then
+            echo "❌ Expected success but got failure for ${{ matrix.scenario.description }}"
+            exit 1
+          elif [ "${{ matrix.scenario.expected_exit }}" = "1" ] && [ "${{ steps.test-action.outcome }}" != "failure" ]; then
+            echo "❌ Expected failure but got success for ${{ matrix.scenario.description }}"
+            exit 1
+          else
+            echo "✅ Expected result achieved for ${{ matrix.scenario.description }}"
+          fi 

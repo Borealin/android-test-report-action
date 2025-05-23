@@ -1,10 +1,26 @@
-name: 'Android Test Report Action'
-description: 'GitHub Action that prints Android test reports'
-author: 'Asad Mansoor'
+name: 'Android Test Report Action Cross Platform'
+description: 'GitHub Action that prints Android test reports with full cross-platform support (Linux, macOS, Windows)'
+author: 'Borealin'
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    
+    - name: Run Android Test Report (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        "${{ github.action_path }}/entrypoint.sh" "${{ github.action_path }}"
+
+    - name: Run Android Test Report (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/entrypoint.ps1" -ActionPath "${{ github.action_path }}"
 
 branding:
   icon: 'file-text'

@@ -1,13 +1,23 @@
-# Android Test Report Action
+# Android Test Report Action Cross-platform
 
-[![Release](https://img.shields.io/github/release/asadmansr/android-test-report-action.svg)](https://github.com/asadmansr/android-test-report-action/releases)
-[![Marketplace](https://img.shields.io/badge/GitHub-Marketplace-orange.svg)](https://github.com/marketplace/actions/android-test-report-action)
+[![Release](https://img.shields.io/github/release/Borealin/android-test-report-action.svg)](https://github.com/Borealin/android-test-report-action/releases)
+[![Marketplace](https://img.shields.io/badge/GitHub-Marketplace-orange.svg)](https://github.com/marketplace/actions/android-test-report-action-cross-platform)
 
 GitHub Action that prints Android test xml reports.
+
+**✨ Now with full cross-platform support!** 🪟🐧🍎
 
 ![action](./images/promo.png)
 
 <br>
+
+## What's New
+
+This action has been migrated from Docker to a **composite action** using [`@actions/setup-python`](https://github.com/actions/setup-python). This brings several benefits:
+
+- ⚡ **Faster execution** - No Docker image build/pull time
+- 🏃‍♂️ **Better performance** - Runs directly on the runner OS
+- 🌍 **Cross-platform support** - Works on Linux, macOS, and Windows
 
 ## Getting Started
 
@@ -15,7 +25,7 @@ Add the following action to your GitHub Actions workflow.
 
 ```yml
 - name: Android Test Report
-  uses: asadmansr/android-test-report-action@v1.2.0
+  uses: Borealin/android-test-report-action@v1.0.0
 ```
 
 <br>
@@ -34,10 +44,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
       - name: set up JDK 1.8
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
           java-version: 1.8
 
@@ -46,7 +56,7 @@ jobs:
         run: ./gradlew testDebugUnitTest
 
       - name: Android Test Report
-        uses: asadmansr/android-test-report-action@v1.2.0
+        uses: Borealin/android-test-report-action@v1.0.0
         if: ${{ always() }} # IMPORTANT: run Android Test Report regardless
 ```
 #### Note
@@ -68,7 +78,7 @@ jobs:
         run: ./gradlew testDebugUnitTest
 
       - name: Upload Test Reports Folder
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ always() }} # IMPORTANT: Upload reports regardless of status
         with:
           name: reports
@@ -80,12 +90,12 @@ jobs:
     if: ${{ always() }} # IMPORTANT: Execute report job regardless of status
     steps:
       - name: Download Test Reports Folder
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: reports
 
       - name: Android Test Report
-        uses: asadmansr/android-test-report-action@v1.2.0
+        uses: Borealin/android-test-report-action@v1.0.0
 ```
 
 <br>

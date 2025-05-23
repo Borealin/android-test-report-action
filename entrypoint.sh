@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 status_code=0
 num_files=0
@@ -16,7 +16,7 @@ touch $log_file
 
 for i in `find . -name "TEST-*.xml" -type f`; do
     let num_files=num_files+1
-    python /usr/bin/extractReport.py "$i"
+    python "$1/extractReport.py" "$i"
     echo ''
 done
 
@@ -34,4 +34,4 @@ rm $log_file
 
 echo $status_message
 echo ''
-exit $status_code
+exit $status_code 
